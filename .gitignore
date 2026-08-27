@@ -1,0 +1,7 @@
+data/raw/
+*.csv
+*.xlsx
+.env
+__pycache__/
+.venv/
+node_modules/
