@@ -1,6 +1,6 @@
 data/raw/
-*.csv
 *.xlsx
+*.csv
 .env
 __pycache__/
 .venv/

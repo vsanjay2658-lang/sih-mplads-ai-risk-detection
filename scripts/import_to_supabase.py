@@ -1,4 +1,3 @@
-
 import os
 import math
 import pandas as pd
@@ -29,7 +28,7 @@ DATASET_ID = 2
 BATCH_SIZE = 2000
 
 # Number of project IDs requested per Supabase query
-FETCH_BATCH_SIZE = 1000
+FETCH_BATCH_SIZE = 100
 
 
 # ============================================================
@@ -532,4 +531,3 @@ print(
 print(
     "\nMPLADS risk import completed successfully."
 )
-
