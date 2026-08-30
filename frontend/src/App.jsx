@@ -325,6 +325,9 @@ export default function App() {
       } else if (activeFilter === "delay_alerts") {
         const alert = (proj.primary_alert || "").toLowerCase();
         if (!alert.includes("delay") && !alert.includes("days")) return false;
+      } else if (activeFilter === "duplicate_alerts") {
+        const alert = (proj.primary_alert || "").toLowerCase();
+        if (!alert.includes("duplicate") && !alert.includes("overlap") && !alert.includes("consecutive")) return false;
       }
 
       return true;
