@@ -1,7 +1,11 @@
-data/raw/
+/data/
 *.xlsx
 *.csv
 .env
 __pycache__/
 .venv/
+venv/
 node_modules/
+dist/
+frontend/dist/
+.DS_Store
