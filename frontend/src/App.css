@@ -1859,3 +1859,166 @@
   border-top: 1px dashed #64748b;
   margin-bottom: 6px;
 }
+
+/* ==========================================================================
+   11. MOBILE & TABLET RESPONSIVE ENHANCEMENTS
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .metric-cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .dashboard-grid-2col {
+    grid-template-columns: 1fr;
+  }
+  
+  .surplus-stats-grid {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .surplus-stat-box {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 14px 16px;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100% !important;
+  }
+
+  .source-switcher {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .switcher-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .dashboard-content {
+    padding: 0 12px;
+    gap: 16px;
+  }
+
+  .metric-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .metric-card {
+    padding: 12px 10px;
+    min-height: 80px;
+  }
+
+  .card-value {
+    font-size: 20px;
+  }
+
+  .surplus-banner {
+    padding: 18px 16px;
+  }
+
+  .surplus-heading {
+    font-size: 18px;
+  }
+
+  .surplus-stats-grid {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .surplus-stat-box {
+    width: 100%;
+  }
+
+  .constituency-cards-grid {
+    grid-template-columns: 1fr;
+    padding: 16px 14px;
+    gap: 14px;
+  }
+
+  .surplus-toolbar {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-container {
+    max-width: 96vw;
+    max-height: 94vh;
+    border-radius: var(--radius-lg);
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .modal-meta-grid,
+  .factors-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-finance-box {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .reallocation-budget-banner {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .memo-paper {
+    padding: 16px;
+  }
+
+  .memo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .memo-sign-area {
+    flex-direction: column;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
+}

@@ -1,20 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Supabase URL and Publishable Anon Key (with safe fallbacks for Vercel/Production)
+const supabaseUrl = 
+  import.meta.env.VITE_SUPABASE_URL || 
+  "https://znppmfoudamjepmzjvbz.supabase.co";
 
-console.log("SUPABASE URL:", supabaseUrl);
-console.log("SUPABASE KEY EXISTS:", !!supabaseAnonKey);
+const supabaseAnonKey = 
+  import.meta.env.VITE_SUPABASE_ANON_KEY || 
+  "sb_publishable_DAXDttM85uPKKXtU0t0HOQ_UcvpDQmc";
 
-if (!supabaseUrl) {
-    throw new Error("VITE_SUPABASE_URL is missing");
-}
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-if (!supabaseAnonKey) {
-    throw new Error("VITE_SUPABASE_ANON_KEY is missing");
-}
-
-export const supabase = createClient(
-    supabaseUrl,
-    supabaseAnonKey
-);
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : {
+      from: () => ({
+        select: () => Promise.resolve({ data: [], count: 0, error: null }),
+      }),
+    };
