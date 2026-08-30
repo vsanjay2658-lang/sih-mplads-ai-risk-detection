@@ -20,7 +20,7 @@ export default function FullQueueModal({
   const [stateFilter, setStateFilter] = useState("all");
   const [riskFilter, setRiskFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 12;
+  const pageSize = 8;
 
   // Extract unique states
   const uniqueStates = useMemo(() => {
@@ -219,21 +219,44 @@ export default function FullQueueModal({
         {/* Pagination Footer */}
         <div className="queue-pagination">
           <span className="pagination-info">
-            Page {currentPage} of {totalPages} ({filteredProjects.length} total entries)
+            Showing {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, filteredProjects.length)} of {filteredProjects.length} projects (Page {currentPage} of {totalPages})
           </span>
           <div className="pagination-controls">
             <button
               className="page-btn"
-              disabled={currentPage === 1}
+              disabled={currentPage <= 1}
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              title="Go to previous page"
             >
               <ChevronLeft size={16} />
-              <span>Previous</span>
+              <span>Prev</span>
             </button>
+
+            {/* Page Number Pills */}
+            <div style={{ display: "flex", gap: "4px" }}>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  className={`page-btn ${currentPage === pageNum ? "active-page" : ""}`}
+                  style={{
+                    minWidth: "32px",
+                    justifyContent: "center",
+                    backgroundColor: currentPage === pageNum ? "#0f172a" : "#ffffff",
+                    color: currentPage === pageNum ? "#ffffff" : "var(--text-secondary)",
+                    fontWeight: currentPage === pageNum ? "700" : "500",
+                  }}
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+
             <button
               className="page-btn"
-              disabled={currentPage === totalPages}
+              disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              title="Go to next page"
             >
               <span>Next</span>
               <ChevronRight size={16} />
