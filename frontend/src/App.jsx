@@ -7,6 +7,7 @@ import StateMonitoringChart from "./components/StateMonitoringChart";
 import TopProjectsTable from "./components/TopProjectsTable";
 import ProjectDetailModal from "./components/ProjectDetailModal";
 import FullQueueModal from "./components/FullQueueModal";
+import HighRiskProjectsModal from "./components/HighRiskProjectsModal";
 import SurplusWelfareSection from "./components/SurplusWelfareSection";
 import WelfareProposalModal from "./components/WelfareProposalModal";
 import CSVUploadModal from "./components/CSVUploadModal";
@@ -36,6 +37,7 @@ export default function App() {
   // Modals
   const [selectedProject, setSelectedProject] = useState(null);
   const [isFullQueueOpen, setIsFullQueueOpen] = useState(false);
+  const [isHighRiskModalOpen, setIsHighRiskModalOpen] = useState(false);
   const [selectedWelfareConstituency, setSelectedWelfareConstituency] = useState(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
@@ -403,7 +405,11 @@ export default function App() {
         <MetricCards
           metrics={activeMetrics}
           onFilterCardClick={(cardId) => {
-            setActiveFilter((prev) => (prev === cardId ? "all" : cardId));
+            if (cardId === "high_risk") {
+              setIsHighRiskModalOpen(true);
+            } else {
+              setActiveFilter((prev) => (prev === cardId ? "all" : cardId));
+            }
           }}
           activeFilter={activeFilter}
         />
@@ -412,7 +418,13 @@ export default function App() {
         <section className="dashboard-grid-2col" aria-label="Risk and Anomaly Distribution">
           <RiskDistributionChart
             data={activeRiskDist}
-            onSelectRiskLevel={(lvl) => setActiveRiskLevel((prev) => (prev === lvl ? null : lvl))}
+            onSelectRiskLevel={(lvl) => {
+              if (lvl === "High" || lvl === "Critical") {
+                setIsHighRiskModalOpen(true);
+              } else {
+                setActiveRiskLevel((prev) => (prev === lvl ? null : lvl));
+              }
+            }}
             activeRiskLevel={activeRiskLevel}
           />
           <AnomalyOverview
@@ -448,6 +460,17 @@ export default function App() {
           existingProjects={rawProjects}
           onClose={() => setIsUploadModalOpen(false)}
           onAddProjectsToDashboard={handleAddProjectsToDashboard}
+        />
+      )}
+
+      {/* High-Risk Projects Command Center Modal */}
+      {isHighRiskModalOpen && (
+        <HighRiskProjectsModal
+          projects={rawProjects}
+          onClose={() => setIsHighRiskModalOpen(false)}
+          onSelectProject={(proj) => {
+            setSelectedProject(proj);
+          }}
         />
       )}
 
