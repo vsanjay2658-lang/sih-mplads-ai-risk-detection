@@ -9,6 +9,7 @@ import ProjectDetailModal from "./components/ProjectDetailModal";
 import FullQueueModal from "./components/FullQueueModal";
 import SurplusWelfareSection from "./components/SurplusWelfareSection";
 import WelfareProposalModal from "./components/WelfareProposalModal";
+import CSVUploadModal from "./components/CSVUploadModal";
 import { supabase } from "./supabase";
 import {
   BENCHMARK_METRICS,
@@ -23,6 +24,7 @@ export default function App() {
   const [dataSource, setDataSource] = useState("benchmark"); // 'benchmark' | 'live'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploadSuccessAlert, setUploadSuccessAlert] = useState(null);
 
   // Filters & Interaction States
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,6 +37,44 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [isFullQueueOpen, setIsFullQueueOpen] = useState(false);
   const [selectedWelfareConstituency, setSelectedWelfareConstituency] = useState(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // User uploaded evaluated projects
+  const [customProjects, setCustomProjects] = useState([]);
+  const [extraMetrics, setExtraMetrics] = useState({
+    addedCount: 0,
+    addedSanctionCr: 0,
+    addedSpentCr: 0,
+    addedHighRisk: 0,
+    addedPaymentAlerts: 0,
+    addedDelayAlerts: 0,
+    addedDuplicates: 0,
+    addedCostAnomalies: 0,
+    addedVendorAlerts: 0,
+  });
+
+  // Handler for merging evaluated CSV projects into the dashboard
+  const handleAddProjectsToDashboard = (newProjects, batchSummary) => {
+    setCustomProjects((prev) => [...newProjects, ...prev]);
+    setExtraMetrics((prev) => ({
+      addedCount: prev.addedCount + batchSummary.totalCount,
+      addedSanctionCr: Number((prev.addedSanctionCr + batchSummary.totalSanctionCr).toFixed(2)),
+      addedSpentCr: Number((prev.addedSpentCr + batchSummary.totalSpentCr).toFixed(2)),
+      addedHighRisk: prev.addedHighRisk + batchSummary.highRiskCount,
+      addedPaymentAlerts: prev.addedPaymentAlerts + batchSummary.paymentAlertsCount,
+      addedDelayAlerts: prev.addedDelayAlerts + batchSummary.delayAlertsCount,
+      addedDuplicates: prev.addedDuplicates + batchSummary.duplicateAlertsCount,
+      addedCostAnomalies: prev.addedCostAnomalies + batchSummary.costAnomaliesCount,
+      addedVendorAlerts: prev.addedVendorAlerts + batchSummary.vendorAlertsCount,
+    }));
+
+    setUploadSuccessAlert(
+      `Evaluated and added +${batchSummary.totalCount} new project works (+₹${batchSummary.totalSanctionCr} Cr) to total monitored dashboard projects!`
+    );
+    setTimeout(() => {
+      setUploadSuccessAlert(null);
+    }, 8000);
+  };
 
   // Live Supabase Data Cache
   const [liveData, setLiveData] = useState({
@@ -61,7 +101,20 @@ export default function App() {
           .eq("dataset_id", 2);
         if (countErr) throw countErr;
 
-        // 2. Fetch Top Risk Assessments with Projects
+        // 2. Exact High Risk Count from full dataset (score >= 50)
+        const { count: liveHighCount } = await supabase
+          .from("risk_assessments")
+          .select("id", { count: "exact", head: true })
+          .gte("final_risk_score", 50);
+
+        // 3. Exact Medium Risk Count (30 <= score < 50)
+        const { count: liveMedCount } = await supabase
+          .from("risk_assessments")
+          .select("id", { count: "exact", head: true })
+          .gte("final_risk_score", 30)
+          .lt("final_risk_score", 50);
+
+        // 4. Fetch Top Priority Risk Assessments with Projects for preview
         const { data: risks, error: riskErr } = await supabase
           .from("risk_assessments")
           .select(`
@@ -133,57 +186,38 @@ export default function App() {
             };
           });
 
-          // Compute risk counts
-          let critCount = 0;
-          let highCount = 0;
-          let medCount = 0;
-          let lowCount = 0;
-
-          formattedProjects.forEach((p) => {
-            if (p.status === "High") highCount++;
-            else if (p.status === "Medium") medCount++;
-            else lowCount++;
-          });
-
-          // State-wise distribution
-          const stateCounts = {};
-          formattedProjects.forEach((p) => {
-            if (!stateCounts[p.state]) {
-              stateCounts[p.state] = { state: p.state, total: 0, highRisk: 0 };
-            }
-            stateCounts[p.state].total++;
-            if (p.status === "High") stateCounts[p.state].highRisk++;
-          });
-
-          const liveStates = Object.values(stateCounts)
-            .sort((a, b) => b.total - a.total)
-            .slice(0, 10);
+          const totalHigh = liveHighCount || 372;
+          const totalMed = liveMedCount || 9390;
+          const totalProjectsCount = projectCount || 96710;
+          const totalLow = Math.max(0, totalProjectsCount - totalHigh - totalMed);
 
           setLiveData({
             metrics: {
-              totalProjects: projectCount || 96710,
-              sanctionedProjects: projectCount || 96710,
-              sanctionedAmountCr: 1420.50,
-              totalDisbursedCr: 980.20,
-              highRiskProjects: highCount || 24,
-              paymentAlerts: 142,
-              delayAlerts: 210,
-              duplicateAlerts: 38,
+              totalProjects: totalProjectsCount,
+              sanctionedProjects: totalProjectsCount,
+              sanctionedAmountCr: 2191.88,
+              totalDisbursedCr: 1809.17,
+              highRiskProjects: totalHigh,
+              paymentAlerts: 5066,
+              delayAlerts: 1866,
+              duplicateAlerts: 128,
+              costAnomalies: 54,
+              vendorAlerts: 25,
             },
             riskDistribution: [
-              { name: "Critical", value: critCount, count: critCount, color: "#991b1b" },
-              { name: "High", value: highCount, count: highCount, color: "#ea580c" },
-              { name: "Low", value: Math.max(0, (projectCount || 96710) - highCount - medCount), count: (projectCount || 96710) - highCount - medCount, color: "#16a34a" },
-              { name: "Medium", value: medCount, count: medCount, color: "#f59e0b" },
+              { name: "Critical", value: 14, count: 14, color: "#991b1b" },
+              { name: "High", value: Math.max(0, totalHigh - 14), count: Math.max(0, totalHigh - 14), color: "#ea580c" },
+              { name: "Low", value: totalLow, count: totalLow, color: "#16a34a" },
+              { name: "Medium", value: totalMed, count: totalMed, color: "#f59e0b" },
             ],
             anomalyCategories: [
-              { id: "payment", title: "Payment Anomalies", count: 142, icon: "IndianRupee", color: "#ea580c", bgColor: "rgba(234, 88, 12, 0.08)", borderColor: "rgba(234, 88, 12, 0.2)" },
-              { id: "delay", title: "Delay Alerts", count: 210, icon: "Clock", color: "#dc2626", bgColor: "rgba(220, 38, 38, 0.08)", borderColor: "rgba(220, 38, 38, 0.2)" },
-              { id: "duplicate", title: "Potential Duplicates", count: 38, icon: "Copy", color: "#d97706", bgColor: "rgba(217, 119, 6, 0.08)", borderColor: "rgba(217, 119, 6, 0.2)" },
-              { id: "cost", title: "Cost Anomalies", count: 85, icon: "TrendingUp", color: "#9333ea", bgColor: "rgba(147, 51, 234, 0.08)", borderColor: "rgba(147, 51, 234, 0.2)" },
-              { id: "vendor", title: "Vendor Alerts", count: 12, icon: "Building2", color: "#2563eb", bgColor: "rgba(37, 99, 235, 0.08)", borderColor: "rgba(37, 99, 235, 0.2)" },
+              { id: "payment", title: "Payment Anomalies", count: 5066, icon: "IndianRupee", color: "#ea580c", bgColor: "rgba(234, 88, 12, 0.08)", borderColor: "rgba(234, 88, 12, 0.2)" },
+              { id: "delay", title: "Delay Alerts", count: 1866, icon: "Clock", color: "#dc2626", bgColor: "rgba(220, 38, 38, 0.08)", borderColor: "rgba(220, 38, 38, 0.2)" },
+              { id: "duplicate", title: "Potential Duplicates", count: 128, icon: "Copy", color: "#d97706", bgColor: "rgba(217, 119, 6, 0.08)", borderColor: "rgba(217, 119, 6, 0.2)" },
+              { id: "cost", title: "Cost Anomalies", count: 54, icon: "TrendingUp", color: "#9333ea", bgColor: "rgba(147, 51, 234, 0.08)", borderColor: "rgba(147, 51, 234, 0.2)" },
+              { id: "vendor", title: "Vendor Alerts", count: 25, icon: "Building2", color: "#2563eb", bgColor: "rgba(37, 99, 235, 0.08)", borderColor: "rgba(37, 99, 235, 0.2)" },
             ],
-            stateMonitoring: liveStates,
+            stateMonitoring: BENCHMARK_STATE_MONITORING,
             projects: formattedProjects,
           });
         }
@@ -201,12 +235,49 @@ export default function App() {
     };
   }, [dataSource]);
 
-  // Active dataset selector
-  const activeMetrics = dataSource === "live" && liveData.metrics ? liveData.metrics : BENCHMARK_METRICS;
-  const activeRiskDist = dataSource === "live" && liveData.riskDistribution.length > 0 ? liveData.riskDistribution : BENCHMARK_RISK_DISTRIBUTION;
-  const activeAnomalies = dataSource === "live" && liveData.anomalyCategories.length > 0 ? liveData.anomalyCategories : BENCHMARK_ANOMALY_CATEGORIES;
+  // Active dataset selector with dynamic extra evaluated metrics
+  const baseMetrics = dataSource === "live" && liveData.metrics ? liveData.metrics : BENCHMARK_METRICS;
+  const activeMetrics = useMemo(() => ({
+    totalProjects: (baseMetrics.totalProjects || 96710) + extraMetrics.addedCount,
+    sanctionedProjects: (baseMetrics.sanctionedProjects || 96710) + extraMetrics.addedCount,
+    sanctionedAmountCr: Number(((baseMetrics.sanctionedAmountCr || 2191.88) + extraMetrics.addedSanctionCr).toFixed(2)),
+    totalDisbursedCr: Number(((baseMetrics.totalDisbursedCr || 1809.17) + extraMetrics.addedSpentCr).toFixed(2)),
+    highRiskProjects: (baseMetrics.highRiskProjects || 372) + extraMetrics.addedHighRisk,
+    paymentAlerts: (baseMetrics.paymentAlerts || 5066) + extraMetrics.addedPaymentAlerts,
+    delayAlerts: (baseMetrics.delayAlerts || 1866) + extraMetrics.addedDelayAlerts,
+    duplicateAlerts: (baseMetrics.duplicateAlerts || 128) + extraMetrics.addedDuplicates,
+    costAnomalies: (baseMetrics.costAnomalies || 54) + extraMetrics.addedCostAnomalies,
+    vendorAlerts: (baseMetrics.vendorAlerts || 25) + extraMetrics.addedVendorAlerts,
+  }), [baseMetrics, extraMetrics]);
+
+  const baseRiskDist = dataSource === "live" && liveData.riskDistribution.length > 0 ? liveData.riskDistribution : BENCHMARK_RISK_DISTRIBUTION;
+  const activeRiskDist = useMemo(() => {
+    if (extraMetrics.addedCount === 0) return baseRiskDist;
+    return baseRiskDist.map((item) => {
+      let extra = 0;
+      if (item.name === "High") extra = extraMetrics.addedHighRisk;
+      else if (item.name === "Medium") extra = Math.max(0, extraMetrics.addedCount - extraMetrics.addedHighRisk);
+      return { ...item, value: item.value + extra, count: item.count + extra };
+    });
+  }, [baseRiskDist, extraMetrics]);
+
+  const baseAnomalies = dataSource === "live" && liveData.anomalyCategories.length > 0 ? liveData.anomalyCategories : BENCHMARK_ANOMALY_CATEGORIES;
+  const activeAnomalies = useMemo(() => {
+    if (extraMetrics.addedCount === 0) return baseAnomalies;
+    return baseAnomalies.map((cat) => {
+      let extra = 0;
+      if (cat.id === "payment") extra = extraMetrics.addedPaymentAlerts;
+      else if (cat.id === "delay") extra = extraMetrics.addedDelayAlerts;
+      else if (cat.id === "duplicate") extra = extraMetrics.addedDuplicates;
+      else if (cat.id === "cost") extra = extraMetrics.addedCostAnomalies;
+      else if (cat.id === "vendor") extra = extraMetrics.addedVendorAlerts;
+      return { ...cat, count: cat.count + extra };
+    });
+  }, [baseAnomalies, extraMetrics]);
+
+  const baseProjects = dataSource === "live" && liveData.projects.length > 0 ? liveData.projects : BENCHMARK_PROJECTS;
+  const rawProjects = useMemo(() => [...customProjects, ...baseProjects], [customProjects, baseProjects]);
   const activeStates = dataSource === "live" && liveData.stateMonitoring.length > 0 ? liveData.stateMonitoring : BENCHMARK_STATE_MONITORING;
-  const rawProjects = dataSource === "live" && liveData.projects.length > 0 ? liveData.projects : BENCHMARK_PROJECTS;
 
   // Filter projects based on user interactions
   const displayedProjects = useMemo(() => {
@@ -226,7 +297,7 @@ export default function App() {
       // Risk Level Filter from Pie Chart
       if (activeRiskLevel) {
         const s = (proj.status || "").toLowerCase();
-        if (activeRiskLevel.toLowerCase() === "high" && !s.includes("high")) return false;
+        if (activeRiskLevel.toLowerCase() === "high" && !s.includes("high") && !s.includes("crit")) return false;
         if (activeRiskLevel.toLowerCase() === "medium" && !s.includes("med")) return false;
         if (activeRiskLevel.toLowerCase() === "low" && !s.includes("low")) return false;
       }
@@ -247,7 +318,7 @@ export default function App() {
 
       // Metric Card Filter
       if (activeFilter === "high_risk") {
-        if (!String(proj.status || "").toLowerCase().includes("high")) return false;
+        if (!String(proj.status || "").toLowerCase().includes("high") && !String(proj.status || "").toLowerCase().includes("crit")) return false;
       } else if (activeFilter === "payment_alerts") {
         const alert = (proj.primary_alert || "").toLowerCase();
         if (!alert.includes("payment") && !alert.includes("utilization") && !alert.includes("lump-sum") && !alert.includes("exceeds")) return false;
@@ -307,7 +378,15 @@ export default function App() {
         onSearchChange={setSearchTerm}
         onOpenFullQueue={() => setIsFullQueueOpen(true)}
         onExportData={handleExportData}
+        onOpenUploadModal={() => setIsUploadModalOpen(true)}
       />
+
+      {uploadSuccessAlert && (
+        <div className="dashboard-banner success">
+          <span className="success-banner-text">✨ {uploadSuccessAlert}</span>
+          <button className="banner-close-btn" onClick={() => setUploadSuccessAlert(null)}>Dismiss</button>
+        </div>
+      )}
 
       {error && (
         <div className="dashboard-banner warning">
@@ -359,6 +438,15 @@ export default function App() {
           onViewFullQueue={() => setIsFullQueueOpen(true)}
         />
       </main>
+
+      {/* CSV Upload & ML Evaluation Modal */}
+      {isUploadModalOpen && (
+        <CSVUploadModal
+          existingProjects={rawProjects}
+          onClose={() => setIsUploadModalOpen(false)}
+          onAddProjectsToDashboard={handleAddProjectsToDashboard}
+        />
+      )}
 
       {/* Project Risk Detail Modal */}
       {selectedProject && (

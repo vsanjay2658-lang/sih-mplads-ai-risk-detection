@@ -1,4 +1,3 @@
-import React from "react";
 import { 
   ShieldAlert, 
   Database, 
@@ -6,18 +5,20 @@ import {
   Download, 
   Search,
   Sparkles,
-  Layers
+  Layers,
+  UploadCloud
 } from "lucide-react";
 
 export default function Header({ 
-  totalProjects = 272, 
+  totalProjects = 96710, 
   dataSource = "benchmark", 
   onToggleSource, 
   loading = false,
   searchTerm = "",
   onSearchChange,
   onOpenFullQueue,
-  onExportData
+  onExportData,
+  onOpenUploadModal
 }) {
   return (
     <header className="dashboard-header">
@@ -77,6 +78,15 @@ export default function Header({
           </div>
 
           {/* Quick Action buttons */}
+          <button 
+            className="header-btn upload-accent-btn"
+            onClick={onOpenUploadModal}
+            title="Upload raw CSV file and run AI risk evaluation"
+          >
+            <UploadCloud size={15} />
+            <span>Upload & Evaluate CSV</span>
+          </button>
+
           <button 
             className="header-btn secondary"
             onClick={onOpenFullQueue}
